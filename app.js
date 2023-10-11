@@ -6,15 +6,18 @@ const readline = require('readline');
 const app = express();
 app.use(express.json());
 
+// Middleware for validating parameters in the request
 function validateParameters(req, res, next) {
   const n = parseInt(req.query.n);
   const filename = req.params.filename;
   const filter = req.query.filter || '';
 
+  // Check if the 'n' parameter is a positive integer
   if (isNaN(n) || n <= 0) {
     return res.status(400).send("Invalid or missing 'n' parameter.");
   }
 
+  // Check if the 'filename' parameter is provided
   if (!filename) {
     return res.status(400).send("Invalid or missing 'filename' parameter.");
   }
@@ -37,18 +40,27 @@ app.get('/listLogs/:filename', validateParameters, async (request, response) => 
 
     const filteredLines = [];
 
+    // Listen for each line in the log file
     rl.on('line', (line) => {
+      // Check if the line includes the filter text
       if (line.includes(filter)) {
         filteredLines.push(line);
+
+        // Remove the oldest line if more than N lines are found
         if (filteredLines.length > n) {
-          filteredLines.shift(); // Remove the oldest line if more than N lines are found
+          filteredLines.shift();
         }
       }
     });
 
+    // When the file reading is complete, send the last N lines
     rl.on('close', () => {
       const lastNLines = filteredLines.join('\n');
+
+      // Log the number of lines returned
       console.log(`Number of lines returned: ${filteredLines.length}`);
+      
+      // Send the last N lines as the response
       response.send(lastNLines);
     });
   } catch (err) {
