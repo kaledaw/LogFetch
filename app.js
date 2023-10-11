@@ -6,22 +6,25 @@ const readline = require('readline');
 const app = express();
 app.use(express.json());
 
-app.listen(PORT, () => {
-  console.log('Server Listening on PORT:', PORT);
-});
-
-app.get('/listLogs/:filename', async (request, response) => {
-  const n = parseInt(request.query.n);
-  const filename = request.params.filename;
-  const filter = request.query.filter || '';
+function validateParameters(req, res, next) {
+  const n = parseInt(req.query.n);
+  const filename = req.params.filename;
+  const filter = req.query.filter || '';
 
   if (isNaN(n) || n <= 0) {
-    return response.status(400).send("Invalid or missing 'n' parameter.");
+    return res.status(400).send("Invalid or missing 'n' parameter.");
   }
 
   if (!filename) {
-    return response.status(400).send("Invalid or missing 'filename' parameter.");
+    return res.status(400).send("Invalid or missing 'filename' parameter.");
   }
+
+  req.logParams = { n, filename, filter };
+  next();
+}
+
+app.get('/listLogs/:filename', validateParameters, async (request, response) => {
+  const { n, filename, filter } = request.logParams;
 
   const filePath = `/var/log/${filename}.log`;
 
@@ -33,17 +36,35 @@ app.get('/listLogs/:filename', async (request, response) => {
     });
 
     const filteredLines = [];
-    for await (const line of rl) {
+
+    rl.on('line', (line) => {
       if (line.includes(filter)) {
         filteredLines.push(line);
+        if (filteredLines.length > n) {
+          filteredLines.shift(); // Remove the oldest line if more than N lines are found
+        }
       }
-    }
+    });
 
-    const lastNLines = filteredLines.slice(-n).join('\n');
-    response.send(lastNLines);
+    rl.on('close', () => {
+      const lastNLines = filteredLines.join('\n');
+      console.log(`Number of lines returned: ${filteredLines.length}`);
+      response.send(lastNLines);
+    });
   } catch (err) {
-    console.error(err);
-    response.status(500).send("Error reading the log file.");
+    // Check if the error is related to a non-found file
+    if (err.code === 'ENOENT') {
+      response.status(404).send('Log file not found.');
+    } else {
+      console.error(err);
+      response.status(500).send('Error reading the log file.');
+    }
   }
 });
+
+app.listen(PORT, () => {
+  console.log('Server Listening on PORT:', PORT);
+});
+
+module.exports = app;
 
