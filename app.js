@@ -10,39 +10,40 @@ app.listen(PORT, () => {
   console.log('Server Listening on PORT:', PORT);
 });
 
-app.get('/listLogs/:filename', (request, response) => {
+app.get('/listLogs/:filename', async (request, response) => {
   const n = parseInt(request.query.n);
   const filename = request.params.filename;
   const filter = request.query.filter || '';
 
   if (isNaN(n) || n <= 0) {
-    response.status(400).send("Invalid or missing 'n' parameter.");
-    return;
+    return response.status(400).send("Invalid or missing 'n' parameter.");
   }
 
   if (!filename) {
-    response.status(400).send("Invalid or missing 'filename' parameter.");
-    return;
+    return response.status(400).send("Invalid or missing 'filename' parameter.");
   }
 
   const filePath = `/var/log/${filename}.log`;
 
-  const fileStream = fs.createReadStream(filePath, { encoding: 'utf8' });
-  const rl = readline.createInterface({
-    input: fileStream,
-    crlfDelay: Infinity,
-  });
+  try {
+    const fileStream = fs.createReadStream(filePath, { encoding: 'utf8' });
+    const rl = readline.createInterface({
+      input: fileStream,
+      crlfDelay: Infinity,
+    });
 
-  const filteredLines = [];
-  rl.on('line', (line) => {
-    if (line.includes(filter)) {
-      filteredLines.push(line);
+    const filteredLines = [];
+    for await (const line of rl) {
+      if (line.includes(filter)) {
+        filteredLines.push(line);
+      }
     }
-  });
 
-  rl.on('close', () => {
     const lastNLines = filteredLines.slice(-n).join('\n');
     response.send(lastNLines);
-  });
+  } catch (err) {
+    console.error(err);
+    response.status(500).send("Error reading the log file.");
+  }
 });
 
