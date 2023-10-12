@@ -31,47 +31,44 @@ app.get('/listLogs/:filename', validateParameters, async (request, response) => 
 
   const filePath = `/var/log/${filename}.log`;
 
-  try {
-    const fileStream = fs.createReadStream(filePath, { encoding: 'utf8' });
-    const rl = readline.createInterface({
-      input: fileStream,
-      crlfDelay: Infinity,
-    });
-
-    const filteredLines = [];
-
-    // Listen for each line in the log file
-    rl.on('line', (line) => {
-      // Check if the line includes the filter text
-      if (line.includes(filter)) {
-        filteredLines.push(line);
-
-        // Remove the oldest line if more than N lines are found
-        if (filteredLines.length > n) {
-          filteredLines.shift();
-        }
-      }
-    });
-
-    // When the file reading is complete, send the last N lines
-    rl.on('close', () => {
-      const lastNLines = filteredLines.join('\n');
-
-      // Log the number of lines returned
-      console.log(`Number of lines returned: ${filteredLines.length}`);
-      
-      // Send the last N lines as the response
-      response.send(lastNLines);
-    });
-  } catch (err) {
-    // Check if the error is related to a non-found file
-    if (err.code === 'ENOENT') {
-      response.status(404).send('Log file not found.');
-    } else {
-      console.error(err);
-      response.status(500).send('Error reading the log file.');
-    }
+  if (!fs.existsSync(filePath)) {
+    return response.status(404).send('Log file not found.');
   }
+
+  const fileStream = fs.createReadStream(filePath, { encoding: 'utf8' });
+  const rl = readline.createInterface({
+    input: fileStream,
+    crlfDelay: Infinity,
+  });
+
+  const filteredLines = [];
+
+  // Listen for each line in the log file
+  rl.on('line', (line) => {
+    // Check if the line includes the filter text
+    if (line.includes(filter)) {
+      filteredLines.push(line);
+
+      // Remove the oldest line if more than N lines are found
+      if (filteredLines.length > n) {
+        filteredLines.shift();
+      }
+    }
+  });
+
+  // When the file reading is complete, send the last N lines
+  rl.on('close', () => {
+    // Reverse the filteredLines array
+    const reversedLines = filteredLines.reverse();
+
+    const lastNLines = reversedLines.join('\n');
+
+    // Log the number of lines returned
+    console.log(`Number of lines returned: ${reversedLines.length}`);
+
+    // Send the last N lines as the response
+    response.send(lastNLines);
+  });
 });
 
 app.listen(PORT, () => {

@@ -9,10 +9,8 @@ The Log Fetch API is a Node.js application that allows you to retrieve the last 
 
 - [Installation](#installation)
 - [Usage](#usage)
-- [API Documentation](#api-documentation)
 - [Testing](#testing)
 - [Contributing](#contributing)
-- [License](#license)
 
 ## Installation
 
@@ -57,19 +55,6 @@ To run the Log Fetch API locally, follow these steps:
 
    Replace `system` with the desired log file name, `50` with the number of lines you want to retrieve, and `error` with your desired filter.
 
-## API Documentation
-
-You can view the API documentation to learn more about available endpoints, parameters, and responses:
-
-1. Start the server as mentioned in the [Usage](#usage) section.
-
-2. Open your web browser and navigate to:
-
-   ```
-   http://localhost:3000/api-docs
-   ```
-
-   This will display the API documentation using Swagger UI.
 
 ## Testing
 
